@@ -11,7 +11,7 @@
 
 (def cli-options
   [["-l" "--log LOG" "Log file with input data"]
-   ["-c" "--version-control VCS" "Input vcs module type: supports svn, git, git2, hg, or p4"]
+   ["-c" "--version-control VCS" "Input vcs module type: supports svn, git, git2, hg, tfs, or p4"]
    ["-a" "--analysis ANALYSIS"
     (str "The analysis to run (" (app/analysis-names)  ")")
     :default "authors"]
@@ -38,7 +38,7 @@
 
 (defn- usage [options-summary]
   (->> ["This is Code Maat, a program used to collect statistics from a VCS."
-        "Version: 0.9.1-SNAPSHOT"
+        "Version: 0.9.1-raystlin99"
         ""
         "Usage: program-name -l log-file [options]"
         ""

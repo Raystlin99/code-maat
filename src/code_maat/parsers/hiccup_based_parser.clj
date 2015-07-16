@@ -57,14 +57,14 @@
 (defn- extend-when-complete
   "Keep each line wrapped in its own vector so that
    we're able to join them with a delimiter for the grammar."
-  [entries next-line entry-acc parse-fn]
-  (if (s/blank? next-line)
+  [entries next-line entry-acc parse-fn separator?]
+  (if (separator? next-line)
     [(conj entries (parse-entry-from entry-acc parse-fn)) []]
     [entries (conj entry-acc [next-line])]))
 
 (defn- complete-the-rest-in
   "Constructs the final entry in the version-control log.
-   The entries are separated by a blank line _except_ for
+   The entries are separated by a token (e.g. blank line) _except_ for
    the last one that doesn't get a trailing newline."
   [entry-acc entries parse-fn]
   (if (empty? entry-acc)
@@ -72,7 +72,7 @@
     (conj entries (parse-entry-from entry-acc parse-fn))))
 
 (defn as-entry-tokens
-  [parse-fn lines]
+  [parse-fn separator? lines]
   (loop [lines-left lines
          entry-acc []
          entries []]
@@ -82,7 +82,8 @@
             [updated-entries updated-acc]  (extend-when-complete entries
                                                                  next-line
                                                                  entry-acc
-                                                                 parse-fn)]
+                                                                 parse-fn
+                                                                 separator?)]
         (recur (rest lines-left) updated-acc updated-entries)))))
   
 ;;
@@ -148,14 +149,31 @@
 ;;; as a combination of the different functions (including
 ;;; the second pass through as we transform from hiccup).
 
+;;; TODO2: Do NOT share the code between parsers - they have different 
+;;; data and we're probably better of with simpler code to the price of 
+;;; some minor duplications.
+
+(defn- parser-dependent-start-action-from
+  "Here we provide a hook that lets us strip a possible parser prelude.
+   This is used to get rid of the leading '---' seq provided by TFS."
+  [field-extractors]
+  (:start-action field-extractors identity))
+
+(defn- parser-dependent-separator-from
+  [field-extractors]
+  (:separator field-extractors s/blank?))
+
 (defn- parse-from
   "Expected to be invoked in a with-open context."
   [rdr grammar field-extractors]
    (let [specific-parser (insta/parser grammar)
-         parse-fn (partial parse-with specific-parser)]
+         parse-fn (partial parse-with specific-parser)
+         start-action (parser-dependent-start-action-from field-extractors)
+         separator? (parser-dependent-separator-from field-extractors)]
      (->>
       (line-seq rdr)
-      (as-entry-tokens parse-fn)
+      start-action
+      (as-entry-tokens parse-fn separator?)
       (mapcat (partial entry-as-row field-extractors)))))
 
 (defn- encoding-from
